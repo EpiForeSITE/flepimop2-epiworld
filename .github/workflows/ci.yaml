@@ -127,10 +127,32 @@ jobs:
         env:
           UV_LOCKED: 'true'
           UV_PYTHON_VERSION: '3.12'
+      # `flepimop2.testing` builds its throwaway project by pip-installing
+      # flepimop2 from a source checkout, which it locates by walking up from
+      # its own file. Installed from git it has no pyproject.toml above it and
+      # the integration test would skip itself, so check it out as a sibling.
+      - name: 'checkout flepimop2 source for the integration test'
+        uses: 'actions/checkout@v6.0.3'
+        with:
+          repository: 'ACCIDDA/flepimop2'
+          path: 'flepimop2-src'
+          persist-credentials: false
       - name: 'run integration tests'
-        run: 'just integration'
+        run: |
+          uv sync --locked --group dev
+          uv pip install -e ./flepimop2-src
+          uv run --no-sync pytest -m integration
         env:
-          UV_LOCKED: 'true'
+          UV_PYTHON_VERSION: '3.12'
+      - name: 'fail if the integration test skipped itself'
+        run: |
+          uv run --no-sync pytest -m integration -rs --tb=no -q \
+            | tee /tmp/integration.txt
+          if grep -q 'skipped' /tmp/integration.txt; then
+            echo 'integration test skipped; it must actually run in CI' >&2
+            exit 1
+          fi
+        env:
           UV_PYTHON_VERSION: '3.12'
 
   # Exercise the image we publish, so a broken container is caught here rather

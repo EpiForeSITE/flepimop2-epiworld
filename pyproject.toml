@@ -39,9 +39,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
-# flepimop2 has not been published to PyPI yet, so resolve it from the sibling
-# checkout. Remove this once it is on an index.
-flepimop2 = { path = "../flepimop2", editable = true }
+# flepimop2 is not on PyPI yet, so resolve it from git. A local path source
+# would break CI and the dev container, which have no sibling checkout.
+# Remove this once flepimop2 publishes to an index.
+flepimop2 = { git = "https://github.com/ACCIDDA/flepimop2.git", branch = "main" }
 
 [dependency-groups]
 dev = [

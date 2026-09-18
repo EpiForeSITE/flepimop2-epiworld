@@ -31,8 +31,16 @@ from typing import Final
 
 from flepimop2_epiworldr.exceptions import EpiworldrUnavailableError
 
-MIN_EPIWORLDR_VERSION: Final = (0, 15, 1)
-"""Oldest epiworldR whose state names and seeding semantics this driver assumes."""
+MIN_EPIWORLDR_VERSION: Final = (0, 14, 0)
+"""
+Oldest epiworldR this provider supports.
+
+0.14.0.0 is the release that stopped drawing a random seed when one was
+supplied, which is what makes runs reproducible. It is also what CRAN currently
+ships, so the floor is deliberately not raised to the newer development
+versions: the seeding mapping and compartment names were verified identical on
+both.
+"""
 
 RSCRIPT_ENV_VAR: Final = "FLEPIMOP2_EPIWORLDR_RSCRIPT"
 """Environment variable overriding `Rscript` discovery."""

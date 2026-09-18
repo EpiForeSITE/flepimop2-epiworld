@@ -441,7 +441,7 @@ wheels = [
 [[package]]
 name = "flepimop2"
 version = "0.4.0.dev0"
-source = { editable = "../flepimop2" }
+source = { git = "https://github.com/ACCIDDA/flepimop2.git?branch=main#0fd665337906e6585b2cdfb550e45bcfbd896d4e" }
 dependencies = [
     { name = "click" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -449,39 +449,6 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "typing-extensions" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "click", specifier = ">=8.3.0" },
-    { name = "numpy", specifier = ">=2.2.6" },
-    { name = "pydantic", specifier = ">=2.12.2" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "typing-extensions", specifier = ">=4.15.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "build", specifier = ">=1.4.2" },
-    { name = "matplotlib", specifier = ">=3.10.9" },
-    { name = "mike", specifier = ">=2.1.3" },
-    { name = "mkdocs", specifier = ">=1.6.1" },
-    { name = "mkdocs-autorefs", specifier = ">=1.4.3" },
-    { name = "mkdocs-click", specifier = ">=0.9.0" },
-    { name = "mkdocs-material", specifier = ">=9.6.22" },
-    { name = "mkdocstrings", extras = ["python"], specifier = ">=0.30.1" },
-    { name = "mypy", specifier = ">=1.18.2" },
-    { name = "pandas", specifier = ">=3.0.2" },
-    { name = "pandas-stubs", specifier = ">=3.0.0.260204" },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "pytest-cov", specifier = ">=7.0.0" },
-    { name = "ruff", specifier = ">=0.13.3" },
-    { name = "scipy", specifier = ">=1.17.0" },
-    { name = "scipy-stubs", specifier = ">=1.17.0.2" },
-    { name = "sybil", extras = ["pytest"], specifier = ">=9.2.0" },
-    { name = "twine", specifier = ">=6.2.0" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20250915" },
-    { name = "yamllint", specifier = ">=1.37.1" },
 ]
 
 [[package]]
@@ -508,7 +475,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "flepimop2", editable = "../flepimop2" },
+    { name = "flepimop2", git = "https://github.com/ACCIDDA/flepimop2.git?branch=main" },
     { name = "numpy", specifier = ">=2.2.6" },
     { name = "pydantic", specifier = ">=2.12.2" },
 ]

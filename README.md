@@ -14,7 +14,7 @@ Supports epiworldR's `ModelSEIRCONN`. Other models plug into the same seam; see
 ## Requirements
 
 - Python 3.11+ and [uv](https://docs.astral.sh/uv/)
-- R with the `epiworldR` (>= 0.15.1) and `jsonlite` packages
+- R with the `epiworldR` (>= 0.14.0) and `jsonlite` packages
 - `data.table` and `ggplot2` for the bundled example's plotting step
 
 ## Install
@@ -102,7 +102,8 @@ an `initial_states()` proportion vector, not from absolute counts. Recovering
 exact counts takes care, because epiworld stores prevalence as a C `float` and
 truncates in two places. Passing the bare ratio lands one agent short in roughly
 a third of configurations. This provider adds a half unit before dividing so
-truncation is exact, verified against epiworldR for populations up to ~10^6, and
+truncation is exact, verified against epiworldR 0.14 and 0.15 for populations up
+to ~10^6, and
 the R driver hard-fails if realized day-0 counts ever disagree with the config.
 
 ## Adding a model
@@ -124,6 +125,16 @@ uv sync --group dev
 just dev        # ruff, mypy, tests
 just test-r     # the tests that actually drive epiworldR
 just example    # run the replicate example end to end
+```
+
+The integration test installs this package into a throwaway environment via
+`flepimop2.testing`, which needs flepimop2 itself to be a *source* install. The
+lockfile resolves flepimop2 from git, so point it at a local checkout to run
+that test — otherwise it skips itself:
+
+```bash
+uv pip install -e ../flepimop2
+just integration
 ```
 
 A [dev container](.devcontainer) built on the same base image as epiworldR is
