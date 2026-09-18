@@ -1,0 +1,158 @@
+[project]
+name = "flepimop2-epiworldr"
+version = "0.1.0dev"
+description = "A flepimop2 external provider for epiworldR agent-based models"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "George G. Vega Yon", email = "g.vegayon@gmail.com" },
+]
+requires-python = ">=3.11,<3.15"
+dependencies = [
+    "flepimop2~=0.0",
+    "numpy>=2.2.6",
+    "pydantic>=2.12.2",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/EpiForeSITE/flepimop2-epiworldr"
+Issues = "https://github.com/EpiForeSITE/flepimop2-epiworldr/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+# flepimop2 has not been published to PyPI yet, so resolve it from the sibling
+# checkout. Remove this once it is on an index.
+flepimop2 = { path = "../flepimop2", editable = true }
+
+[dependency-groups]
+dev = [
+    "build>=1.4.2",
+    "mypy>=1.18.2",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.13.3",
+    "twine>=6.2.0",
+    "yamllint>=1.37.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "src/flepimop2/",
+    "src/flepimop2_epiworldr/",
+    "tests/",
+]
+addopts = [
+    "--import-mode=importlib",
+]
+markers = [
+    "integration: marks integration tests in tests/integration/",
+]
+doctest_optionflags = [
+    "ELLIPSIS",
+    "NORMALIZE_WHITESPACE",
+]
+
+[tool.ruff.format]
+preview = true
+docstring-code-format = true
+docstring-code-line-length = 72
+
+[tool.ruff.lint]
+preview = true
+select = [
+    "ALL",
+]
+ignore = [
+    # Mirrors flepimop2's own ignore list so the two repos lint alike.
+    "missing-trailing-comma",             # Redundant with the formatter
+    "incorrect-blank-line-before-class",  # Conflicts with blank-line-before-class
+    "multi-line-summary-first-line",      # Summary starts on the second line here
+    "implicit-namespace-package",         # PEP 420 namespace dirs are the point
+    "import-private-name",                # flepimop2 exposes ABCs under private paths
+    "magic-value-comparison",
+    "non-empty-init-module",              # Module classes live in __init__.py
+    # Running R in a subprocess is this package's entire purpose, so flagging
+    # every `import subprocess` is pure noise.
+    "suspicious-subprocess-import",
+]
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = [
+    "no-self-use",
+    "assert",
+    "private-member-access",
+    # Tests deliberately shell out to Rscript with paths they construct.
+    "subprocess-without-shell-equals-true",
+    # `nudged_fraction` returns exactly 0.0 or 1.0 on its degenerate branches;
+    # that exactness is the property under test, so approx would weaken it.
+    "float-equality-comparison",
+    # Stub systems must match a signature they do not use.
+    "unused-lambda-argument",
+    "unused-method-argument",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+mypy_path = ["src"]
+files = "."
+exclude = [
+    "^build/",
+    "^dist/",
+]
+namespace_packages = true
+explicit_package_bases = true
+strict = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flepimop2", "src/flepimop2_epiworldr"]
+
+# Belt-and-braces: `force-include` bypasses every exclusion rule, including a
+# stray VCS ignore that would otherwise silently drop the R driver from the
+# wheel and leave the engine unable to run.
+[tool.hatch.build.targets.wheel.force-include]
+"src/flepimop2_epiworldr/r/run_epiworldr.R" = "flepimop2_epiworldr/r/run_epiworldr.R"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src",
+    "tests",
+    "examples",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "conftest.py",
+    "pyproject.toml",
+]
+
+[tool.coverage.report]
+fail_under = 80
+precision = 1
+
+[tool.coverage.run]
+omit = [
+    "src/flepimop2_epiworldr/r/*",
+]

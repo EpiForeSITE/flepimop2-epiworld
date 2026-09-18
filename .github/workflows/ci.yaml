@@ -1,0 +1,157 @@
+---
+name: 'ci'
+
+'on':
+  pull_request:
+    branches:
+      - 'main'
+  push:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+permissions:
+  contents: 'read'
+
+jobs:
+  quality:
+    name: 'quality'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'checkout repository'
+        uses: 'actions/checkout@v6.0.3'
+        with:
+          persist-credentials: false
+      - name: 'setup just and uv'
+        uses: './.github/actions/setup-just-and-uv'
+        with:
+          python-version: '3.14'
+      - name: 'run quality checks'
+        run: 'just quality'
+        env:
+          UV_LOCKED: 'true'
+          UV_PYTHON_VERSION: '3.14'
+
+  package:
+    name: 'package'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'checkout repository'
+        uses: 'actions/checkout@v6.0.3'
+        with:
+          persist-credentials: false
+      - name: 'setup just and uv'
+        uses: './.github/actions/setup-just-and-uv'
+        with:
+          python-version: '3.14'
+      - name: 'check package artifacts'
+        run: 'just build-check'
+        env:
+          UV_LOCKED: 'true'
+          UV_PYTHON_VERSION: '3.14'
+      # The engine is useless without its R driver, and a stray VCS ignore
+      # would drop it from the wheel silently.
+      - name: 'verify the R driver ships in the wheel'
+        run: 'just check-wheel-contents'
+
+  # The bulk of the suite, including the initial-state regression table, runs
+  # without R so it stays fast and covers every supported Python.
+  tests:
+    name: 'tests (${{ matrix.python-version }}, ${{ matrix.dependency-set }})'
+    needs:
+      - 'quality'
+      - 'package'
+    runs-on: 'ubuntu-latest'
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.11'
+          - '3.12'
+          - '3.13'
+          - '3.14'
+        dependency-set:
+          - 'locked'
+          - 'lowest-direct'
+    steps:
+      - name: 'checkout repository'
+        uses: 'actions/checkout@v6.0.3'
+        with:
+          persist-credentials: false
+      - name: 'setup just and uv with python ${{ matrix.python-version }}'
+        uses: './.github/actions/setup-just-and-uv'
+        with:
+          python-version: '${{ matrix.python-version }}'
+      - name: 'run locked tests'
+        if: ${{ matrix.dependency-set == 'locked' }}
+        run: 'just ci-pytest'
+        env:
+          UV_LOCKED: 'true'
+          UV_PYTHON_VERSION: '${{ matrix.python-version }}'
+      - name: 'run minimum-version tests'
+        if: ${{ matrix.dependency-set == 'lowest-direct' }}
+        run: 'just ci-pytest-lowest-direct'
+        env:
+          UV_PYTHON_VERSION: '${{ matrix.python-version }}'
+
+  # Installing R and epiworldR is the expensive part, so it runs once rather
+  # than across the matrix.
+  tests-r:
+    name: 'tests (R)'
+    needs:
+      - 'quality'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'checkout repository'
+        uses: 'actions/checkout@v6.0.3'
+        with:
+          persist-credentials: false
+      - name: 'setup just and uv'
+        uses: './.github/actions/setup-just-and-uv'
+        with:
+          python-version: '3.12'
+      - name: 'setup R'
+        uses: 'r-lib/actions/setup-r@v2'
+        with:
+          use-public-rspm: true
+      - name: 'install R dependencies'
+        uses: 'r-lib/actions/setup-r-dependencies@v2'
+        with:
+          packages: |
+            any::epiworldR
+            any::jsonlite
+            any::data.table
+            any::ggplot2
+      - name: 'run R-backed tests'
+        run: 'just test-r'
+        env:
+          UV_LOCKED: 'true'
+          UV_PYTHON_VERSION: '3.12'
+      - name: 'run integration tests'
+        run: 'just integration'
+        env:
+          UV_LOCKED: 'true'
+          UV_PYTHON_VERSION: '3.12'
+
+  # Exercise the image we publish, so a broken container is caught here rather
+  # than by whoever next opens the dev container.
+  container:
+    name: 'container smoke'
+    needs:
+      - 'quality'
+    runs-on: 'ubuntu-latest'
+    # TODO: drop once build-devcontainer has pushed :latest at least once.
+    continue-on-error: true
+    container:
+      image: 'ghcr.io/epiforesite/flepimop2-epiworldr:latest'
+    steps:
+      - name: 'checkout repository'
+        uses: 'actions/checkout@v6.0.3'
+        with:
+          persist-credentials: false
+      - name: 'run tests inside the published image'
+        run: |
+          just ci-pytest
+          just test-r
+        env:
+          UV_LOCKED: 'true'

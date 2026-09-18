@@ -1,0 +1,27 @@
+{
+  "name": "flepimop2-epiworldr",
+  "build": {
+    "dockerfile": "Containerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "REditorSupport.r",
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "r.rterm.linux": "/usr/local/bin/R",
+        "python.defaultInterpreterPath": ".venv/bin/python"
+      }
+    }
+  },
+  "postCreateCommand": "uv sync --group dev",
+  "remoteUser": "root"
+}

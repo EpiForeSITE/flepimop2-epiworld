@@ -1,0 +1,67 @@
+---
+# epiworldR ModelSEIRCONN driven by flepimop2, with stochastic replicates.
+#
+# flepimop2 has no built-in replicate concept, but it does not need one: the
+# simulate command already runs one simulation per scenario tuple and writes
+# each to its own file. Sweeping `seed` over a grid therefore gives independent
+# epiworldR replicates, which the `process:` step below turns into a median and
+# a 95% interval.
+name: seirconn-replicates
+
+system:
+  - module: epiworldr
+    model: seirconn
+    state_change: state
+    population_name: flepimop2-demo
+
+engine:
+  - module: epiworldr
+    timeout: 120
+    # Rscript is discovered from PATH, $R_HOME, or $FLEPIMOP2_EPIWORLDR_RSCRIPT.
+    # rscript: /usr/local/bin/Rscript
+    #
+    # `--vanilla` drops ~/.Renviron, so if epiworldR lives in a user library,
+    # point at it explicitly:
+    # r_libs: ['/opt/R/library']
+
+backend:
+  - module: csv
+    root: ./model_output
+
+parameter:
+  # Initial compartment counts. The engine converts these into epiworldR's
+  # population size, prevalence proportion, and initial_states() vector.
+  s0: 9700
+  e0: 120
+  i0: 60
+  r0: 120
+  # ModelSEIRCONN rate parameters.
+  contact_rate: 6.0
+  transmission_rate: 0.08
+  incubation_days: 3.0
+  recovery_rate: 0.2
+  # `seed` is deliberately absent: the system marks it optional, so it is
+  # supplied per-replicate by the scenario grid below.
+
+scenarios:
+  - module: grid
+    parameters:
+      seed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+             11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
+simulate:
+  replicates:
+    system: default
+    engine: default
+    backend: default
+    times: '0:1:150'
+    scenario: default
+
+process:
+  summarize:
+    module: shell
+    command: Rscript
+    args:
+      - scripts/summarize_replicates.R
+      - model_output
+      - figures/seirconn_ci.png
