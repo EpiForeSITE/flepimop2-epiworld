@@ -123,6 +123,9 @@ container:
 example:
     #!/usr/bin/env bash
     set -euo pipefail
+    if [[ "${EXAMPLE_VERBOSE:-false}" == "true" ]]; then
+        set -x
+    fi
     cd examples/seirconn-replicates
     rm -f model_output/*.csv
     uv run flepimop2 simulate config.yaml

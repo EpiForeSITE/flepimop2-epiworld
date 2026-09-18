@@ -1,32 +1,31 @@
 # flepimop2-epiworldr
 
-A [flepimop2][flepimop2] external provider that runs [epiworldR][epiworldR]
-agent-based models from a flepimop2 configuration.
 
-[flepimop2]: https://github.com/ACCIDDA/flepimop2
-[epiworldR]: https://github.com/UofUEpiBio/epiworldR
+A [flepimop2](https://github.com/ACCIDDA/flepimop2) external provider
+that runs [epiworldR](https://github.com/UofUEpiBio/epiworldR)
+agent-based models from a flepimop2 configuration.
 
 ## Status
 
-Supports epiworldR's `ModelSEIRCONN`. Other models plug into the same seam; see
-[Adding a model](#adding-a-model).
+Supports epiworldR’s `ModelSEIRCONN`. Other models plug into the same
+seam; see [Adding a model](#adding-a-model).
 
 ## Requirements
 
 - Python 3.11+ and [uv](https://docs.astral.sh/uv/)
-- R with the `epiworldR` (>= 0.14.0) and `jsonlite` packages
-- `data.table` and `ggplot2` for the bundled example's plotting step
+- R with the `epiworldR` (\>= 0.14.0) and `jsonlite` packages
+- `data.table` and `ggplot2` for the bundled example’s plotting step
 
 ## Install
 
-```bash
+``` bash
 uv add flepimop2-epiworldr
 Rscript -e 'install.packages(c("epiworldR", "jsonlite"))'
 ```
 
 ## Use
 
-```yaml
+``` yaml
 system:
   - module: epiworldr
     model: seirconn
@@ -54,16 +53,17 @@ simulate:
     times: '0:1:150'
 ```
 
-`flepimop2 simulate config.yaml` writes the usual `(time, S, E, I, R)` CSV.
+`flepimop2 simulate config.yaml` writes the usual `(time, S, E, I, R)`
+CSV.
 
 ### Replicates and confidence intervals
 
-flepimop2 has no replicate concept, and does not need one: `simulate` already
-runs one simulation per scenario tuple and writes each to its own file. Sweeping
-`seed` over a grid gives independent epiworldR replicates, which a `process:`
-step can aggregate:
+flepimop2 has no replicate concept, and does not need one: `simulate`
+already runs one simulation per scenario tuple and writes each to its
+own file. Sweeping `seed` over a grid gives independent epiworldR
+replicates, which a `process:` step can aggregate:
 
-```yaml
+``` yaml
 scenarios:
   - module: grid
     parameters:
@@ -75,74 +75,97 @@ simulate:
     scenario: default
 ```
 
-See [`examples/seirconn-replicates`](examples/seirconn-replicates) for a
-complete project that produces a median and 95% interval plot.
+## Example
+
+The folder
+[`examples/seirconn-replicates`](examples/seirconn-replicates) contains
+a complete project that produces a median and 95% interval plot. You can
+look at the configuration file
+[here](examples/seirconn-replicates/config.yaml). The following code
+executes the simulation and processing steps:
+
+``` bash
+cd examples/seirconn-replicates
+rm -f model_output/*.csv
+uv run flepimop2 simulate config.yaml
+uv run flepimop2 process config.yaml
+```
+
+    wrote figures/seirconn_ci.png from 20 replicates
+
+We can look at the generated image:
+
+<img src="examples/seirconn-replicates/figures/seirconn_ci.png"
+style="width:70.0%" />
 
 ## How it works
 
-epiworldR is an agent-based model whose C++ core owns its own simulation loop
-and tracks per-agent exposure clocks. It cannot be expressed as flepimop2's
-`f(time, state) -> state` stepper, so the work is split:
+epiworldR is an agent-based model whose C++ core owns its own simulation
+loop and tracks per-agent exposure clocks. It cannot be expressed as
+flepimop2’s `f(time, state) -> state` stepper, so the work is split:
 
 - **`EpiworldrSystem`** is declarative. It names the compartments, the
-  parameters holding their initial counts, and the model's rate parameters, so
-  flepimop2 can resolve them from the `parameter:` section.
-- **`EpiworldrEngine`** ignores the stepper and runs the whole simulation in an
-  `Rscript --vanilla` subprocess, translating the resulting compartment history
-  back into flepimop2's array contract.
+  parameters holding their initial counts, and the model’s rate
+  parameters, so flepimop2 can resolve them from the `parameter:`
+  section.
+- **`EpiworldrEngine`** ignores the stepper and runs the whole
+  simulation in an `Rscript --vanilla` subprocess, translating the
+  resulting compartment history back into flepimop2’s array contract.
 
-Running R out of process costs about 0.4s of startup per run, but keeps a fault
-in epiworld's C++ from taking down the pipeline and avoids a build-fragile
-in-process binding.
+Running R out of process costs about 0.4s of startup per run, but keeps
+a fault in epiworld’s C++ from taking down the pipeline and avoids a
+build-fragile in-process binding.
 
 ### Initial conditions are exact
 
-epiworldR seeds a model from a population size, a prevalence *proportion*, and
-an `initial_states()` proportion vector, not from absolute counts. Recovering
-exact counts takes care, because epiworld stores prevalence as a C `float` and
-truncates in two places. Passing the bare ratio lands one agent short in roughly
-a third of configurations. This provider adds a half unit before dividing so
-truncation is exact, verified against epiworldR 0.14 and 0.15 for populations up
-to ~10^6, and
-the R driver hard-fails if realized day-0 counts ever disagree with the config.
+epiworldR seeds a model from a population size, a prevalence
+*proportion*, and an `initial_states()` proportion vector, not from
+absolute counts. Recovering exact counts takes care, because epiworld
+stores prevalence as a C `float` and truncates in two places. Passing
+the bare ratio lands one agent short in roughly a third of
+configurations. This provider adds a half unit before dividing so
+truncation is exact, verified against epiworldR 0.14 and 0.15 for
+populations up to ~10^6, and the R driver hard-fails if realized day-0
+counts ever disagree with the config.
 
 ## Adding a model
 
-1. Add an `EpiworldrModelSpec` to `MODEL_SPECS` in
-   `src/flepimop2_epiworldr/_models.py` and widen `EpiworldrModelKey`.
-2. Add the matching entry to `MODEL_SPECS` in
-   `src/flepimop2_epiworldr/r/run_epiworldr.R`.
-3. Confirm the model's `initial_states()` semantics — they differ per family —
-   and extend the seeding mapping if it is not SEIR-shaped.
+1.  Add an `EpiworldrModelSpec` to `MODEL_SPECS` in
+    `src/flepimop2_epiworldr/_models.py` and widen `EpiworldrModelKey`.
+2.  Add the matching entry to `MODEL_SPECS` in
+    `src/flepimop2_epiworldr/r/run_epiworldr.R`.
+3.  Confirm the model’s `initial_states()` semantics — they differ per
+    family — and extend the seeding mapping if it is not SEIR-shaped.
 
-A parity test compares the Python and R registries, so a half-finished addition
-fails in CI rather than at run time.
+A parity test compares the Python and R registries, so a half-finished
+addition fails in CI rather than at run time.
 
 ## Development
 
-```bash
+``` bash
 uv sync --group dev
 just dev        # ruff, mypy, tests
 just test-r     # the tests that actually drive epiworldR
 just example    # run the replicate example end to end
 ```
 
-The integration test installs this package into a throwaway environment via
-`flepimop2.testing`, which needs flepimop2 itself to be a *source* install. The
-lockfile resolves flepimop2 from git, so point it at a local checkout to run
-that test — otherwise it skips itself:
+The integration test installs this package into a throwaway environment
+via `flepimop2.testing`, which needs flepimop2 itself to be a *source*
+install. The lockfile resolves flepimop2 from git, so point it at a
+local checkout to run that test — otherwise it skips itself:
 
-```bash
+``` bash
 uv pip install -e ../flepimop2
 just integration
 ```
 
-A [dev container](.devcontainer) built on the same base image as epiworldR is
-published to `ghcr.io/epiforesite/flepimop2-epiworldr`.
+A [dev container](.devcontainer) built on the same base image as
+epiworldR is published to `ghcr.io/epiforesite/flepimop2-epiworldr`.
 
-Most of the suite runs without R, including the initial-state regression tests,
-which reproduce epiworld's float32 arithmetic in NumPy.
+Most of the suite runs without R, including the initial-state regression
+tests, which reproduce epiworld’s float32 arithmetic in NumPy.
 
 ## License
 
-GPL-3.0-or-later, as required for a flepimop2 provider. See [LICENSE](LICENSE).
+GPL-3.0-or-later, as required for a flepimop2 provider. See
+[LICENSE](LICENSE).
