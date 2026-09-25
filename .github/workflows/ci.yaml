@@ -19,7 +19,7 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - name: 'checkout repository'
-        uses: 'actions/checkout@v6.0.3'
+        uses: 'actions/checkout@v7.0.1'
         with:
           persist-credentials: false
       - name: 'setup just and uv'
@@ -37,7 +37,7 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - name: 'checkout repository'
-        uses: 'actions/checkout@v6.0.3'
+        uses: 'actions/checkout@v7.0.1'
         with:
           persist-credentials: false
       - name: 'setup just and uv'
@@ -75,7 +75,7 @@ jobs:
           - 'lowest-direct'
     steps:
       - name: 'checkout repository'
-        uses: 'actions/checkout@v6.0.3'
+        uses: 'actions/checkout@v7.0.1'
         with:
           persist-credentials: false
       - name: 'setup just and uv with python ${{ matrix.python-version }}'
@@ -103,7 +103,7 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - name: 'checkout repository'
-        uses: 'actions/checkout@v6.0.3'
+        uses: 'actions/checkout@v7.0.1'
         with:
           persist-credentials: false
       - name: 'setup just and uv'
@@ -132,7 +132,7 @@ jobs:
       # its own file. Installed from git it has no pyproject.toml above it and
       # the integration test would skip itself, so check it out as a sibling.
       - name: 'checkout flepimop2 source for the integration test'
-        uses: 'actions/checkout@v6.0.3'
+        uses: 'actions/checkout@v7.0.1'
         with:
           repository: 'ACCIDDA/flepimop2'
           path: 'flepimop2-src'
@@ -168,7 +168,7 @@ jobs:
       image: 'ghcr.io/epiforesite/flepimop2-epiworldr:latest'
     steps:
       - name: 'checkout repository'
-        uses: 'actions/checkout@v6.0.3'
+        uses: 'actions/checkout@v7.0.1'
         with:
           persist-credentials: false
       - name: 'run tests inside the published image'
