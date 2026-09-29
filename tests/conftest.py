@@ -1,4 +1,4 @@
-# flepimop2-epiworldr: A flepimop2 external provider for epiworldR
+# flepimop2-epiworld: A flepimop2 external provider for epiworld
 # Copyright (C) 2026  George G. Vega Yon
 #
 # This program is free software: you can redistribute it and/or modify
@@ -13,40 +13,4 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""Shared fixtures and R-availability gating for the test suite."""
-
-import functools
-import shutil
-import subprocess
-
-import pytest
-
-_PROBE_TIMEOUT = 120.0
-
-
-@functools.lru_cache(maxsize=1)
-def has_epiworldr() -> bool:
-    """
-    Report whether an Rscript with epiworldR installed is reachable.
-
-    Returns:
-        True when the R side of the bridge can actually run.
-    """
-    rscript = shutil.which("Rscript")
-    if rscript is None:
-        return False
-    probe = "quit(status = if (requireNamespace('epiworldR', quietly = TRUE)) 0 else 1)"
-    proc = subprocess.run(
-        [rscript, "--vanilla", "-e", probe],
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=_PROBE_TIMEOUT,
-    )
-    return proc.returncode == 0
-
-
-requires_epiworldr = pytest.mark.skipif(
-    not has_epiworldr(),
-    reason="needs Rscript with the epiworldR package installed",
-)
+"""Shared fixtures for the test suite."""

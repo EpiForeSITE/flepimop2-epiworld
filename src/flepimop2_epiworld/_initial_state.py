@@ -1,4 +1,4 @@
-# flepimop2-epiworldr: A flepimop2 external provider for epiworldR
+# flepimop2-epiworld: A flepimop2 external provider for epiworld
 # Copyright (C) 2026  George G. Vega Yon
 #
 # This program is free software: you can redistribute it and/or modify
@@ -14,9 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-Translate flepimop2 compartment counts into epiworldR seeding arguments.
+Translate flepimop2 compartment counts into epiworld seeding arguments.
 
-epiworldR does not accept absolute initial compartment counts. A `Model*CONN`
+epiworld does not accept absolute initial compartment counts. A `Model*CONN`
 model is seeded with a population size `n`, a `prevalence` *proportion*, and an
 `initial_states()` vector of *proportions*. Recovering exact counts from those
 requires care, because epiworld truncates at two separate points:
@@ -67,7 +67,7 @@ class SeirCounts(NamedTuple):
 
 class SeirSeeding(NamedTuple):
     """
-    epiworldR seeding arguments derived from target compartment counts.
+    epiworld seeding arguments derived from target compartment counts.
 
     Attributes:
         n: Population size passed to the model constructor.
@@ -93,7 +93,7 @@ def nudged_fraction(numerator: int, denominator: int) -> float:
         `numerator` exactly.
 
     Examples:
-        >>> from flepimop2_epiworldr._initial_state import nudged_fraction
+        >>> from flepimop2_epiworld._initial_state import nudged_fraction
         >>> nudged_fraction(1, 1000)
         0.0015
         >>> int(nudged_fraction(1, 1000) * 1000)
@@ -142,7 +142,7 @@ def seir_seeding_arguments(counts: SeirCounts) -> SeirSeeding:
         ValueError: If any count is negative or the population is empty.
 
     Examples:
-        >>> from flepimop2_epiworldr._initial_state import (
+        >>> from flepimop2_epiworld._initial_state import (
         ...     SeirCounts,
         ...     seir_seeding_arguments,
         ... )
@@ -161,14 +161,12 @@ def seir_seeding_arguments(counts: SeirCounts) -> SeirSeeding:
         0
     """
     if any(count < 0 for count in counts):
-        msg = (
-            f"epiworldR initial compartment counts must be non-negative; got {counts}."
-        )
+        msg = f"epiworld initial compartment counts must be non-negative; got {counts}."
         raise ValueError(msg)
     n = sum(counts)
     if n < 1:
         msg = (
-            "epiworldR needs at least one agent, but the initial compartment "
+            "epiworld needs at least one agent, but the initial compartment "
             f"counts sum to {n}."
         )
         raise ValueError(msg)
@@ -189,7 +187,7 @@ def epiworld_realize(seeding: SeirSeeding) -> SeirCounts:
 
     This mirrors epiworld's own arithmetic, including the `float` precision of
     the prevalence step and the truncation of both steps, so the mapping can be
-    regression-tested without R installed.
+    regression-tested without running a simulation.
 
     Args:
         seeding: The constructor and `initial_states()` arguments.
@@ -200,7 +198,7 @@ def epiworld_realize(seeding: SeirSeeding) -> SeirCounts:
     Examples:
         Nudged fractions land exactly on the target:
 
-        >>> from flepimop2_epiworldr._initial_state import (
+        >>> from flepimop2_epiworld._initial_state import (
         ...     SeirCounts,
         ...     epiworld_realize,
         ...     seir_seeding_arguments,
@@ -211,7 +209,7 @@ def epiworld_realize(seeding: SeirSeeding) -> SeirCounts:
 
         Bare ratios do not, which is the whole reason for the nudge:
 
-        >>> from flepimop2_epiworldr._initial_state import SeirSeeding
+        >>> from flepimop2_epiworld._initial_state import SeirSeeding
         >>> naive = SeirSeeding(
         ...     n=10000,
         ...     prevalence=1127 / 10000,
@@ -252,7 +250,7 @@ def epiworld_realized_seir_counts(counts: SeirCounts) -> SeirCounts:
         The compartment counts epiworld will report at day 0.
 
     Examples:
-        >>> from flepimop2_epiworldr._initial_state import (
+        >>> from flepimop2_epiworld._initial_state import (
         ...     SeirCounts,
         ...     epiworld_realized_seir_counts,
         ... )

@@ -1,4 +1,4 @@
-# flepimop2-epiworldr: A flepimop2 external provider for epiworldR
+# flepimop2-epiworld: A flepimop2 external provider for epiworld
 # Copyright (C) 2026  George G. Vega Yon
 #
 # This program is free software: you can redistribute it and/or modify
@@ -66,14 +66,14 @@ def _module_name_for(file_path: Path) -> str:
     Derive a module's real dotted name from its path under `src/`.
 
     Pytest's own name inference collapses the two leaf modules both named
-    `epiworldr` (one under `flepimop2/system/`, one under `flepimop2/engine/`)
+    `epiworld` (one under `flepimop2/system/`, one under `flepimop2/engine/`)
     onto each other and fails collection with an import-file-mismatch. Deriving
     the name from the path avoids that.
 
     Importantly this returns the *canonical* name rather than a synthetic one,
     so doctests share class objects with the rest of the suite. Importing the
     same file twice under two names would give, for example, two distinct
-    `EpiworldrError` classes and make `issubclass` checks quietly fail.
+    `EpiworldError` classes and make `issubclass` checks quietly fail.
 
     Args:
         file_path: Path to a Python source file under `src/`.

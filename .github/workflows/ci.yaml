@@ -49,13 +49,11 @@ jobs:
         env:
           UV_LOCKED: 'true'
           UV_PYTHON_VERSION: '3.14'
-      # The engine is useless without its R driver, and a stray VCS ignore
-      # would drop it from the wheel silently.
-      - name: 'verify the R driver ships in the wheel'
+      - name: 'verify the wheel keeps the namespace package intact'
         run: 'just check-wheel-contents'
 
-  # The bulk of the suite, including the initial-state regression table, runs
-  # without R so it stays fast and covers every supported Python.
+  # The whole suite, including the tests that run epiworld itself, across every
+  # supported Python.
   tests:
     name: 'tests (${{ matrix.python-version }}, ${{ matrix.dependency-set }})'
     needs:
@@ -94,10 +92,8 @@ jobs:
         env:
           UV_PYTHON_VERSION: '${{ matrix.python-version }}'
 
-  # Installing R and epiworldR is the expensive part, so it runs once rather
-  # than across the matrix.
-  tests-r:
-    name: 'tests (R)'
+  integration:
+    name: 'integration and example'
     needs:
       - 'quality'
     runs-on: 'ubuntu-latest'
@@ -110,23 +106,6 @@ jobs:
         uses: './.github/actions/setup-just-and-uv'
         with:
           python-version: '3.12'
-      - name: 'setup R'
-        uses: 'r-lib/actions/setup-r@v2'
-        with:
-          use-public-rspm: true
-      - name: 'install R dependencies'
-        uses: 'r-lib/actions/setup-r-dependencies@v2'
-        with:
-          packages: |
-            any::epiworldR
-            any::jsonlite
-            any::data.table
-            any::ggplot2
-      - name: 'run R-backed tests'
-        run: 'just test-r'
-        env:
-          UV_LOCKED: 'true'
-          UV_PYTHON_VERSION: '3.12'
       # `flepimop2.testing` builds its throwaway project by pip-installing
       # flepimop2 from a source checkout, which it locates by walking up from
       # its own file. Installed from git it has no pyproject.toml above it and
@@ -154,6 +133,10 @@ jobs:
           fi
         env:
           UV_PYTHON_VERSION: '3.12'
+      - name: 'run the replicate example end to end'
+        run: 'just example'
+        env:
+          UV_PYTHON_VERSION: '3.12'
 
   # Exercise the image we publish, so a broken container is caught here rather
   # than by whoever next opens the dev container.
@@ -165,15 +148,13 @@ jobs:
     # TODO: drop once build-devcontainer has pushed :latest at least once.
     continue-on-error: true
     container:
-      image: 'ghcr.io/epiforesite/flepimop2-epiworldr:latest'
+      image: 'ghcr.io/epiforesite/flepimop2-epiworld:latest'
     steps:
       - name: 'checkout repository'
         uses: 'actions/checkout@v7.0.1'
         with:
           persist-credentials: false
       - name: 'run tests inside the published image'
-        run: |
-          just ci-pytest
-          just test-r
+        run: 'just ci-pytest'
         env:
           UV_LOCKED: 'true'

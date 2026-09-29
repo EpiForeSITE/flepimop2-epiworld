@@ -1,5 +1,5 @@
 {
-  "name": "flepimop2-epiworldr",
+  "name": "flepimop2-epiworld",
   "build": {
     "dockerfile": "Containerfile"
   },
@@ -10,18 +10,16 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "REditorSupport.r",
         "ms-python.python",
         "charliermarsh.ruff",
         "github.vscode-github-actions"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
-        "r.rterm.linux": "/usr/local/bin/R",
         "python.defaultInterpreterPath": ".venv/bin/python"
       }
     }
   },
-  "postCreateCommand": "uv sync --group dev",
+  "postCreateCommand": "uv sync --group dev --group example",
   "remoteUser": "root"
 }

@@ -1,4 +1,4 @@
-# flepimop2-epiworldr: A flepimop2 external provider for epiworldR
+# flepimop2-epiworld: A flepimop2 external provider for epiworld
 # Copyright (C) 2026  George G. Vega Yon
 #
 # This program is free software: you can redistribute it and/or modify
@@ -13,12 +13,12 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""Tests for mapping flepimop2 evaluation times onto epiworldR days."""
+"""Tests for mapping flepimop2 evaluation times onto epiworld days."""
 
 import numpy as np
 import pytest
 
-from flepimop2_epiworldr._times import TIME_ATOL, plan_days
+from flepimop2_epiworld._times import TIME_ATOL, plan_days
 
 
 def test_contiguous_times() -> None:
@@ -27,7 +27,7 @@ def test_contiguous_times() -> None:
 
 
 def test_sparse_times_still_simulate_to_the_maximum() -> None:
-    """EpiworldR must run the full span even when few days are reported."""
+    """Epiworld must run the full span even when few days are reported."""
     assert plan_days(np.array([0.0, 5.0, 20.0])) == (20, [0, 5, 20])
 
 
@@ -58,7 +58,7 @@ def test_empty_times_rejected() -> None:
 
 
 def test_negative_times_rejected() -> None:
-    """EpiworldR history starts at day 0."""
+    """Epiworld history starts at day 0."""
     with pytest.raises(ValueError, match="non-negative"):
         plan_days(np.array([0.0, -1.0]))
 
@@ -71,7 +71,7 @@ def test_non_finite_times_rejected(bad: float) -> None:
 
 
 def test_fractional_times_rejected() -> None:
-    """EpiworldR advances a whole day per step, so half days cannot exist."""
+    """Epiworld advances a whole day per step, so half days cannot exist."""
     with pytest.raises(ValueError, match="whole-day"):
         plan_days(np.array([0.0, 0.5, 1.0]))
 

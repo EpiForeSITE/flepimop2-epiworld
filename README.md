@@ -1,38 +1,39 @@
-# flepimop2-epiworldr
+# flepimop2-epiworld
 
 
 A [flepimop2](https://github.com/ACCIDDA/flepimop2) external provider
-that runs [epiworldR](https://github.com/UofUEpiBio/epiworldR)
-agent-based models from a flepimop2 configuration.
+that runs [epiworld](https://github.com/UofUEpiBio/epiworld) agent-based
+models from a flepimop2 configuration, through the
+[epiworldpy](https://github.com/UofUEpiBio/epiworldpy) Python bindings.
 
 ## Status
 
-Supports epiworldR’s `ModelSEIRCONN`. Other models plug into the same
+Supports epiworld’s `ModelSEIRCONN`. Other models plug into the same
 seam; see [Adding a model](#adding-a-model).
 
 ## Requirements
 
 - Python 3.11+ and [uv](https://docs.astral.sh/uv/)
-- R with the `epiworldR` (\>= 0.14.0) and `jsonlite` packages
-- `data.table` and `ggplot2` for the bundled example’s plotting step
+
+epiworldpy ships prebuilt wheels, so there is no compiler, R, or other
+toolchain to install.
 
 ## Install
 
 ``` bash
-uv add flepimop2-epiworldr
-Rscript -e 'install.packages(c("epiworldR", "jsonlite"))'
+uv add flepimop2-epiworld
 ```
 
 ## Use
 
 ``` yaml
 system:
-  - module: epiworldr
+  - module: epiworld
     model: seirconn
     state_change: state
 
 engine:
-  - module: epiworldr
+  - module: epiworld
 
 backend:
   - module: csv
@@ -60,7 +61,7 @@ CSV.
 
 flepimop2 has no replicate concept, and does not need one: `simulate`
 already runs one simulation per scenario tuple and writes each to its
-own file. Sweeping `seed` over a grid gives independent epiworldR
+own file. Sweeping `seed` over a grid gives independent epiworld
 replicates, which a `process:` step can aggregate:
 
 ``` yaml
@@ -87,8 +88,8 @@ executes the simulation and processing steps:
 ``` bash
 cd examples/seirconn-replicates
 rm -f model_output/*.csv
-uv run flepimop2 simulate config.yaml
-uv run flepimop2 process config.yaml
+uv run --group example flepimop2 simulate config.yaml
+uv run --group example flepimop2 process config.yaml
 ```
 
     wrote figures/seirconn_ci.png from 20 replicates
@@ -100,52 +101,51 @@ style="width:70.0%" />
 
 ## How it works
 
-epiworldR is an agent-based model whose C++ core owns its own simulation
+epiworld is an agent-based model whose C++ core owns its own simulation
 loop and tracks per-agent exposure clocks. It cannot be expressed as
 flepimop2’s `f(time, state) -> state` stepper, so the work is split:
 
-- **`EpiworldrSystem`** is declarative. It names the compartments, the
+- **`EpiworldSystem`** is declarative. It names the compartments, the
   parameters holding their initial counts, and the model’s rate
   parameters, so flepimop2 can resolve them from the `parameter:`
   section.
-- **`EpiworldrEngine`** ignores the stepper and runs the whole
-  simulation in an `Rscript --vanilla` subprocess, translating the
-  resulting compartment history back into flepimop2’s array contract.
+- **`EpiworldEngine`** ignores the stepper and runs the whole simulation
+  in-process through epiworldpy, translating the resulting compartment
+  history back into flepimop2’s array contract.
 
-Running R out of process costs about 0.4s of startup per run, but keeps
-a fault in epiworld’s C++ from taking down the pipeline and avoids a
-build-fragile in-process binding.
+Running in-process has no per-run startup cost. The flip side is that a
+fault in epiworld’s C++ takes the flepimop2 process down with it, and a
+run cannot be interrupted by a timeout.
 
 ### Initial conditions are exact
 
-epiworldR seeds a model from a population size, a prevalence
+epiworld seeds a model from a population size, a prevalence
 *proportion*, and an `initial_states()` proportion vector, not from
 absolute counts. Recovering exact counts takes care, because epiworld
 stores prevalence as a C `float` and truncates in two places. Passing
 the bare ratio lands one agent short in roughly a third of
 configurations. This provider adds a half unit before dividing so
-truncation is exact, verified against epiworldR 0.14 and 0.15 for
-populations up to ~10^6, and the R driver hard-fails if realized day-0
-counts ever disagree with the config.
+truncation is exact, and the engine hard-fails if realized day-0 counts
+ever disagree with the config. The test suite fuzzes this against real
+epiworld runs.
 
 ## Adding a model
 
-1.  Add an `EpiworldrModelSpec` to `MODEL_SPECS` in
-    `src/flepimop2_epiworldr/_models.py` and widen `EpiworldrModelKey`.
-2.  Add the matching entry to `MODEL_SPECS` in
-    `src/flepimop2_epiworldr/r/run_epiworldr.R`.
-3.  Confirm the model’s `initial_states()` semantics — they differ per
+1.  Add an `EpiworldModelSpec` to `MODEL_SPECS` in
+    `src/flepimop2_epiworld/_models.py` and widen `EpiworldModelKey`.
+    Its `constructor` is the class name in `epiworldpy.epimodels`.
+2.  Confirm the model’s `initial_states()` semantics — they differ per
     family — and extend the seeding mapping if it is not SEIR-shaped.
 
-A parity test compares the Python and R registries, so a half-finished
-addition fails in CI rather than at run time.
+A test builds every registered model through epiworldpy and compares its
+states with the registry, so a mistyped entry fails in CI rather than at
+run time.
 
 ## Development
 
 ``` bash
 uv sync --group dev
 just dev        # ruff, mypy, tests
-just test-r     # the tests that actually drive epiworldR
 just example    # run the replicate example end to end
 ```
 
@@ -159,11 +159,8 @@ uv pip install -e ../flepimop2
 just integration
 ```
 
-A [dev container](.devcontainer) built on the same base image as
-epiworldR is published to `ghcr.io/epiforesite/flepimop2-epiworldr`.
-
-Most of the suite runs without R, including the initial-state regression
-tests, which reproduce epiworld’s float32 arithmetic in NumPy.
+A [dev container](.devcontainer) is published to
+`ghcr.io/epiforesite/flepimop2-epiworld`.
 
 ## License
 
