@@ -1,4 +1,4 @@
-# flepimop2-epiworldr: A flepimop2 external provider for epiworldR
+# flepimop2-epiworld: A flepimop2 external provider for epiworld
 # Copyright (C) 2026  George G. Vega Yon
 #
 # This program is free software: you can redistribute it and/or modify
@@ -13,30 +13,23 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""Tests that actually run epiworldR through the R driver."""
-
-import json
-import subprocess
+"""Tests that actually run epiworld through epiworldpy."""
 
 import numpy as np
 import pytest
 from flepimop2.axis import ResolvedShape
 from flepimop2.parameter.abc import ModelStateSpecification, ParameterValue
 
-from flepimop2_epiworldr._bridge import (
-    DRIVER_PATH,
+from flepimop2_epiworld import _bridge
+from flepimop2_epiworld._bridge import (
     RunnerConfig,
-    build_request,
-    invoke_driver,
+    load_constructor,
     make_runner,
+    run_model,
 )
-from flepimop2_epiworldr._initial_state import SeirCounts
-from flepimop2_epiworldr._models import MODEL_SPECS
-from flepimop2_epiworldr._rscript import resolve_rscript
-from flepimop2_epiworldr.exceptions import EpiworldrError
-from tests.conftest import requires_epiworldr
-
-pytestmark = requires_epiworldr
+from flepimop2_epiworld._initial_state import SeirCounts, SeirSeeding
+from flepimop2_epiworld._models import MODEL_SPECS, EpiworldModelSpec
+from flepimop2_epiworld.exceptions import EpiworldError
 
 STATE_SPEC = ModelStateSpecification(
     parameter_names=MODEL_SPECS["seirconn"].state_parameters,
@@ -90,36 +83,52 @@ def _run(counts: SeirCounts, times: list[float], seed: int = 1912) -> np.ndarray
     return result
 
 
-def test_registry_parity_between_python_and_r() -> None:
+@pytest.mark.parametrize("spec", MODEL_SPECS.values(), ids=list(MODEL_SPECS))
+def test_registry_matches_epiworldpy(spec: EpiworldModelSpec) -> None:
     """
-    The Python and R registries must agree.
+    Every registered model must exist in epiworldpy with the declared states.
 
-    They are the two halves of one contract, so a model added to only one side
-    should fail here rather than at run time.
+    This replaces the old Python/R registry parity check: epiworldpy itself is
+    now the other half of the contract.
     """
-    proc = subprocess.run(
-        [str(resolve_rscript()), "--vanilla", str(DRIVER_PATH), "--print-spec"],
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=120,
+    model = load_constructor(spec)(
+        name="registry",
+        n=10,
+        prevalence=0.1,
+        **dict.fromkeys(spec.parameters, 0.1),
     )
-    r_specs = json.loads(proc.stdout)
-    assert set(r_specs) == set(MODEL_SPECS)
-    for key, spec in MODEL_SPECS.items():
-        assert r_specs[key]["r_constructor"] == spec.r_constructor
-        assert tuple(r_specs[key]["states"]) == spec.states
-        assert tuple(r_specs[key]["parameters"]) == spec.parameters
-        assert r_specs[key]["init_arity"] == spec.init_arity
+    assert tuple(model.get_states()) == spec.states
 
 
 @pytest.mark.parametrize(
     "counts", REPRESENTATIVE_CASES + NAIVE_FORMULA_FAILURES, ids=str
 )
 def test_day_zero_matches_configuration_exactly(counts: SeirCounts) -> None:
-    """The configured initial conditions are what epiworldR actually simulates."""
+    """The configured initial conditions are what epiworld actually simulates."""
     result = _run(counts, [0.0, 1.0, 2.0])
     assert result[0, 1:].astype(int).tolist() == list(counts)
+
+
+def test_day_zero_is_exact_for_random_populations() -> None:
+    """
+    Fuzz the seeding mapping against real epiworld.
+
+    `run_model` raises on any day-0 drift, so reaching the end is the check.
+    """
+    rng = np.random.default_rng(20260929)
+    for _ in range(100):
+        n = int(rng.integers(1, 100_000))
+        cuts = np.sort(rng.integers(0, n + 1, size=3))
+        counts = SeirCounts(*np.diff([0, *cuts, n]).astype(int).tolist())
+        run_model(
+            MODEL_SPECS["seirconn"],
+            counts=counts,
+            parameters=PARAMETERS,
+            days=[0],
+            ndays=0,
+            seed=1,
+            model_name="fuzz",
+        )
 
 
 def test_population_is_conserved() -> None:
@@ -162,67 +171,50 @@ def test_different_seeds_diverge() -> None:
     )
 
 
-def test_driver_keeps_stdout_empty() -> None:
-    """
-    Stdout must stay clean.
-
-    epiworldR prints a progress bar unless verbose_off() is called, and the
-    bridge treats any stdout as a contract violation.
-    """
-    request = build_request(
-        spec=MODEL_SPECS["seirconn"],
-        counts=SeirCounts(999, 0, 1, 0),
-        parameters=PARAMETERS,
-        days=[0, 1],
-        ndays=1,
-        seed=1,
-        model_name="test",
-    )
-    invoke_driver(request, RunnerConfig(), 4)
+def test_run_keeps_stdout_empty(capfd: pytest.CaptureFixture[str]) -> None:
+    """Epiworld prints a progress bar unless `verbose_off()` is called."""
+    _run(SeirCounts(999, 0, 1, 0), [0.0, 5.0])
+    assert not capfd.readouterr().out
 
 
-def test_time_beyond_run_length_is_rejected() -> None:
-    """A request asking past the simulated span must not be silently clipped."""
-    request = build_request(
-        spec=MODEL_SPECS["seirconn"],
-        counts=SeirCounts(999, 0, 1, 0),
-        parameters=PARAMETERS,
-        days=[0, 999],
-        ndays=1,
-        seed=1,
-        model_name="test",
-    )
-    with pytest.raises(EpiworldrError, match=r"outside 0\.\."):
-        invoke_driver(request, RunnerConfig(), 4)
+def test_day_zero_drift_is_fatal(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A seeding regression must fail loudly, not simulate the wrong state."""
+    counts = NAIVE_FORMULA_FAILURES[0]
+
+    def naive(target: SeirCounts) -> SeirSeeding:
+        n = sum(target)
+        seeded = target.exposed + target.infected
+        return SeirSeeding(
+            n=n,
+            prevalence=seeded / n,
+            proportions=(
+                target.infected / seeded,
+                target.recovered / (target.susceptible + target.recovered),
+            ),
+        )
+
+    monkeypatch.setattr(_bridge, "seir_seeding_arguments", naive)
+    with pytest.raises(EpiworldError, match="Day-0 drift"):
+        _run(counts, [0.0])
 
 
-def test_unknown_model_is_rejected_by_the_driver() -> None:
-    """The R side validates the model key independently of Python."""
-    request = build_request(
-        spec=MODEL_SPECS["seirconn"],
-        counts=SeirCounts(999, 0, 1, 0),
-        parameters=PARAMETERS,
-        days=[0],
-        ndays=0,
-        seed=1,
-        model_name="test",
-    )
-    request["model"] = "nonexistent"
-    with pytest.raises(EpiworldrError, match="unsupported model"):
-        invoke_driver(request, RunnerConfig(), 4)
+def test_unexpected_state_is_rejected() -> None:
+    """A history naming a compartment outside the registry must not be dropped."""
+    hist = {
+        "dates": np.array([0, 0]),
+        "states": {"values": np.array(["Susceptible", "Zombie"]), "indexes": [0, 1]},
+        "counts": np.array([1, 1]),
+    }
+    with pytest.raises(EpiworldError, match="unexpected state"):
+        _bridge._pivot_history(hist, MODEL_SPECS["seirconn"].states, 0)
 
 
-def test_protocol_mismatch_is_rejected() -> None:
-    """A future Python talking to an old driver must fail clearly."""
-    request = build_request(
-        spec=MODEL_SPECS["seirconn"],
-        counts=SeirCounts(999, 0, 1, 0),
-        parameters=PARAMETERS,
-        days=[0],
-        ndays=0,
-        seed=1,
-        model_name="test",
-    )
-    request["protocol"] = 999
-    with pytest.raises(EpiworldrError, match="unsupported request protocol"):
-        invoke_driver(request, RunnerConfig(), 4)
+def test_incomplete_history_is_rejected() -> None:
+    """A missing (day, state) cell would otherwise surface as a NaN count."""
+    hist = {
+        "dates": np.array([0]),
+        "states": {"values": np.array(["Susceptible"]), "indexes": [0]},
+        "counts": np.array([1]),
+    }
+    with pytest.raises(EpiworldError, match="missing"):
+        _bridge._pivot_history(hist, MODEL_SPECS["seirconn"].states, 0)

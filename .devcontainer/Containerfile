@@ -1,17 +1,8 @@
-# Dev container for flepimop2-epiworldr.
+# Dev container for flepimop2-epiworld.
 #
-# Based on the same image epiworldR itself develops against, so R and epiworld
-# behave identically here and in the model's own repo. Python tooling is added
-# on top because this provider is a Python package that shells out to R.
-FROM ghcr.io/rocker-org/devcontainer/r-ver:4.6
-
-# epiworldR is the model; jsonlite carries the request across the bridge;
-# data.table and ggplot2 back the replicate-aggregation example.
-RUN install2.r --error --skipinstalled \
-    epiworldR \
-    jsonlite \
-    data.table \
-    ggplot2
+# epiworld runs in-process through epiworldpy's prebuilt wheels, so all this
+# image needs is Python tooling: uv resolves Python itself from the lockfile.
+FROM mcr.microsoft.com/devcontainers/python:3.13
 
 # uv owns the Python toolchain, matching flepimop2's own workflow.
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
@@ -31,6 +22,7 @@ RUN set -eux; \
 # Architecture-specific variable (built in Docker BuildKit)
 ARG TARGETARCH
 
+# quarto renders README.qmd.
 ARG QUARTO_VERSION=1.10.18
 
 RUN wget https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-${TARGETARCH}.deb && \

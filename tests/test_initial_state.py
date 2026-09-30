@@ -1,4 +1,4 @@
-# flepimop2-epiworldr: A flepimop2 external provider for epiworldR
+# flepimop2-epiworld: A flepimop2 external provider for epiworld
 # Copyright (C) 2026  George G. Vega Yon
 #
 # This program is free software: you can redistribute it and/or modify
@@ -14,15 +14,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-Regression tests for the epiworldR initial-state mapping.
+Regression tests for the epiworld initial-state mapping.
 
-These are the guard against silently wrong initial conditions, and they run
-without R so they cannot be skipped by a missing toolchain in CI.
+These are the guard against silently wrong initial conditions. They check the
+pure arithmetic; `test_run_model.py` checks the same targets against a real
+epiworld run.
 """
 
 import pytest
 
-from flepimop2_epiworldr._initial_state import (
+from flepimop2_epiworld._initial_state import (
     SeirCounts,
     SeirSeeding,
     epiworld_realize,
@@ -111,6 +112,6 @@ def test_seeding_rejects_negative_counts() -> None:
 
 
 def test_seeding_rejects_empty_population() -> None:
-    """EpiworldR cannot build a model with no agents."""
+    """Epiworld cannot build a model with no agents."""
     with pytest.raises(ValueError, match="at least one agent"):
         seir_seeding_arguments(SeirCounts(0, 0, 0, 0))

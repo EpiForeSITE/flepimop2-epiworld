@@ -18,15 +18,10 @@ ruff:
     uv run ruff format
     uv run ruff check --fix
 
-# Run coverage tests (no R required)
+# Run coverage tests
 [group('dev')]
 cov:
     uv run pytest -m "not integration" --cov=src --cov-report=term-missing
-
-# Run the tests that drive epiworldR through R
-[group('dev')]
-test-r:
-    uv run pytest tests/test_driver_r.py -v
 
 # Run integration tests
 [group('dev')]
@@ -37,10 +32,10 @@ integration:
 [group('dev')]
 test: cov integration
 
-# Type check using `mypy`
+# Type check using `mypy` (the example group supplies matplotlib for the example script)
 [group('dev')]
 mypy:
-    uv run mypy
+    uv run --group example mypy
 
 # Clean up venvs, caches, and build artifacts
 [group('dev')]
@@ -60,7 +55,7 @@ ci-ruff:
 # Run CI mypy type checking
 [group('ci')]
 ci-mypy:
-    uv run --locked mypy
+    uv run --locked --group example mypy
 
 # Run CI pytest checks against the committed lockfile
 [group('ci')]
@@ -92,7 +87,7 @@ build-check:
     uv run python -m build
     uv run python -m twine check --strict dist/*
 
-# Verify the wheel carries the R driver and keeps the namespace package intact
+# Verify the wheel carries both modules and keeps the namespace package intact
 [unix]
 [group('build')]
 check-wheel-contents:
@@ -100,10 +95,9 @@ check-wheel-contents:
     set -euo pipefail
     WHEEL="$(ls dist/*.whl | head -1)"
     echo "checking ${WHEEL}"
-    # The engine cannot run without the driver.
-    unzip -l "${WHEEL}" | grep -q 'flepimop2_epiworldr/r/run_epiworldr.R'
-    unzip -l "${WHEEL}" | grep -q 'flepimop2/system/epiworldr/__init__.py'
-    unzip -l "${WHEEL}" | grep -q 'flepimop2/engine/epiworldr/__init__.py'
+    unzip -l "${WHEEL}" | grep -q 'flepimop2_epiworld/_bridge.py'
+    unzip -l "${WHEEL}" | grep -q 'flepimop2/system/epiworld/__init__.py'
+    unzip -l "${WHEEL}" | grep -q 'flepimop2/engine/epiworld/__init__.py'
     # A top-level flepimop2/__init__.py would break the PEP 420 namespace and
     # shadow the real flepimop2 package.
     if unzip -l "${WHEEL}" | grep -qE ' flepimop2/__init__\.py$'; then
@@ -115,7 +109,7 @@ check-wheel-contents:
 # Build the dev container image locally
 [group('build')]
 container:
-    docker build -f .devcontainer/Containerfile -t ghcr.io/epiforesite/flepimop2-epiworldr:latest .
+    docker build -f .devcontainer/Containerfile -t ghcr.io/epiforesite/flepimop2-epiworld:latest .
 
 # Run the replicate example end to end
 [unix]
@@ -128,8 +122,8 @@ example:
     fi
     cd examples/seirconn-replicates
     rm -f model_output/*.csv
-    uv run flepimop2 simulate config.yaml
-    uv run flepimop2 process config.yaml
+    uv run --group example flepimop2 simulate config.yaml
+    uv run --group example flepimop2 process config.yaml
 
 # Lint YAML files using `yamllint`
 [group('lint')]

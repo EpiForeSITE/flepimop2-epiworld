@@ -1,4 +1,4 @@
-# flepimop2-epiworldr: A flepimop2 external provider for epiworldR
+# flepimop2-epiworld: A flepimop2 external provider for epiworld
 # Copyright (C) 2026  George G. Vega Yon
 #
 # This program is free software: you can redistribute it and/or modify
@@ -14,27 +14,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-Shared bridge code for the flepimop2 epiworldR provider.
+Shared bridge code for the flepimop2 epiworld provider.
 
-The flepimop2-facing module classes live in the `flepimop2.system.epiworldr`
-and `flepimop2.engine.epiworldr` namespace packages. This package holds the
+The flepimop2-facing module classes live in the `flepimop2.system.epiworld`
+and `flepimop2.engine.epiworld` namespace packages. This package holds the
 implementation they share: the model registry, the initial-state mapping, the
-time mapping, and the `Rscript` bridge itself.
+time mapping, and the epiworldpy runner itself.
 """
 
 __all__ = [
     "MODEL_SPECS",
-    "EpiworldrError",
-    "EpiworldrModelKey",
-    "EpiworldrModelSpec",
-    "EpiworldrUnavailableError",
+    "EpiworldError",
+    "EpiworldModelKey",
+    "EpiworldModelSpec",
+    "EpiworldUnavailableError",
     "SeirCounts",
 ]
 
-from flepimop2_epiworldr._initial_state import SeirCounts
-from flepimop2_epiworldr._models import (
+from flepimop2_epiworld._initial_state import SeirCounts
+from flepimop2_epiworld._models import (
     MODEL_SPECS,
-    EpiworldrModelKey,
-    EpiworldrModelSpec,
+    EpiworldModelKey,
+    EpiworldModelSpec,
 )
-from flepimop2_epiworldr.exceptions import EpiworldrError, EpiworldrUnavailableError
+from flepimop2_epiworld.exceptions import EpiworldError, EpiworldUnavailableError

@@ -14,15 +14,15 @@ name: 'build devcontainer'
     paths:
       - '.devcontainer/**'
       - '.github/workflows/build-devcontainer.yaml'
-  # A path-triggered build alone would never pick up a new epiworldR release or
-  # a patched rocker base, so rebuild weekly as well.
+  # A path-triggered build alone would never pick up a patched base image, so
+  # rebuild weekly as well.
   schedule:
     - cron: '17 5 * * 1'
   workflow_dispatch:
 
 env:
   REGISTRY: 'ghcr.io'
-  IMAGE_NAME: 'epiforesite/flepimop2-epiworldr'
+  IMAGE_NAME: 'epiforesite/flepimop2-epiworld'
 
 jobs:
   build-and-push:

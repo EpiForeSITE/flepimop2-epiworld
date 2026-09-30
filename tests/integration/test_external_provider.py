@@ -1,4 +1,4 @@
-# flepimop2-epiworldr: A flepimop2 external provider for epiworldR
+# flepimop2-epiworld: A flepimop2 external provider for epiworld
 # Copyright (C) 2026  George G. Vega Yon
 #
 # This program is free software: you can redistribute it and/or modify
@@ -16,9 +16,9 @@
 """
 End-to-end test of the provider as a real installed package.
 
-This installs flepimop2-epiworldr into a throwaway virtual environment and
+This installs flepimop2-epiworld into a throwaway virtual environment and
 drives it through the `flepimop2` CLI, which is the only way to prove that
-namespace-package discovery, the packaged R driver, and the CLI all work
+namespace-package discovery, the epiworldpy dependency, and the CLI all work
 together in an environment that is not this repo's checkout.
 """
 
@@ -32,8 +32,6 @@ import numpy as np
 import pytest
 from flepimop2.testing import external_provider_package, flepimop2_run
 
-from tests.conftest import requires_epiworldr
-
 PROVIDER_ROOT = Path(__file__).resolve().parents[2]
 
 # `flepimop2.testing` builds its throwaway project by pip-installing flepimop2
@@ -46,12 +44,12 @@ requires_flepimop2_source = pytest.mark.skipif(
 )
 
 CONFIG = """---
-name: epiworldr-integration
+name: epiworld-integration
 system:
-  - module: epiworldr
+  - module: epiworld
     state_change: state
 engine:
-  - module: epiworldr
+  - module: epiworld
 backend:
   - module: csv
     root: ./model_output
@@ -89,7 +87,6 @@ def working_python_on_path(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-@requires_epiworldr
 @requires_flepimop2_source
 @pytest.mark.usefixtures("working_python_on_path")
 def test_provider_runs_through_the_cli(tmp_path: Path) -> None:
@@ -100,8 +97,8 @@ def test_provider_runs_through_the_cli(tmp_path: Path) -> None:
     # `external_provider_package` builds the venv and installs flepimop2 from
     # its source checkout, which is all we want from it here. The provider
     # itself is installed separately, for two reasons: its `copy_files` path
-    # only packages `src/flepimop2`, so it would drop the shared bridge package
-    # and the R driver; and its generated pyproject omits
+    # only packages `src/flepimop2`, so it would drop the shared bridge package;
+    # and its generated pyproject omits
     # `tool.hatch.metadata.allow-direct-references`, so a PEP 508 direct
     # reference in `dependencies` is rejected by hatchling.
     venv_python = external_provider_package(tmp_path)
