@@ -32,10 +32,10 @@ integration:
 [group('dev')]
 test: cov integration
 
-# Type check using `mypy`
+# Type check using `mypy` (the example group supplies matplotlib for the example script)
 [group('dev')]
 mypy:
-    uv run mypy
+    uv run --group example mypy
 
 # Clean up venvs, caches, and build artifacts
 [group('dev')]
@@ -55,7 +55,7 @@ ci-ruff:
 # Run CI mypy type checking
 [group('ci')]
 ci-mypy:
-    uv run --locked mypy
+    uv run --locked --group example mypy
 
 # Run CI pytest checks against the committed lockfile
 [group('ci')]
